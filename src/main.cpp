@@ -27,18 +27,21 @@ vector<string> read_tokens(const string& s){
 
 void read_commands(){
     string command;
+    bool joined = false;
     while (getline(cin,command)){
         vector<string> tokens = read_tokens(command);
         switch (parse(tokens[0])){
         case Cmd::JOIN:
-            if (tokens.size() == 3){
-
+            if (tokens.size() == 3 && !joined){
+                joined = true;
             } else cout << "bad usage" << endl;
-            
+
             break;
         case Cmd::PUT:
+            if (tokens.size() == 3 && joined){}
             break;
         case Cmd::GET:
+            if (tokens.size() == 2 && joined){}
             break;
         case Cmd::STATUS:
             break;
