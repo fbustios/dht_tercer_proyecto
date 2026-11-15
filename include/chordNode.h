@@ -8,6 +8,7 @@
 
 class Node {
     public:
+        Node();
         Node(const uint32_t& id, const int& sock, const std::string& ip, const int& port){
             this->socket = sock;
             this->id = id;
@@ -18,6 +19,7 @@ class Node {
         void create_fingers();
         void find_successor();
         void notify();
+        void transfer();
     private:
         int socket;
         int port;

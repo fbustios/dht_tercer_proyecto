@@ -1,14 +1,16 @@
 #include <bits/stdc++.h>
 #include "../include/network.h"
 #include <thread>
+#include <functional>
 #include "../include/utils.h"
 #include "../include/chordNode.h"
 using namespace std;
 
 
 enum class Cmd{JOIN,  STATUS, FINGERS, LEAVE, INVALID};
-int sock;
-Cmd parse(const string& command){
+static Node node;
+
+static Cmd parse(const string& command){
     static unordered_map<string, Cmd> commands = {
         {"join", Cmd::JOIN},
         {"status", Cmd::STATUS},
@@ -18,7 +20,7 @@ Cmd parse(const string& command){
     const auto it = commands.find(command);
     return it != commands.end() ? it->second : Cmd::INVALID;
 }
-vector<string> read_tokens(const string& s){
+static vector<string> read_tokens(const string& s){
     vector<string> tokens; string token;
     istringstream ss(s);
     while (ss >> token){
@@ -27,17 +29,22 @@ vector<string> read_tokens(const string& s){
     return tokens;
 }
 
-void read_commands(){
+static void read_commands(const string& ip, int port){
     string command;
+    thread handler_thread;
     bool joined = false;
     while (getline(cin,command)){
         vector<string> tokens = read_tokens(command);
+        if (tokens.empty()) continue;
         switch (parse(tokens[0])){
         case Cmd::JOIN:
             if (tokens.size() == 3 && !joined){
                 joined = true;
+                int sock = setup_socket(ip, port);
+                uint32_t h = 1;
+                node = Node(h, sock, ip, port);
+                handler_thread = thread(handle_connections, ref(node));
 
-                thread handler_thread(handle_connections, sock);
             } else cout << "bad usage" << endl;
 
             break;
@@ -48,7 +55,9 @@ void read_commands(){
             if (!joined){}
             break;
         case Cmd::LEAVE:
-            if (!joined){}
+            if (joined){
+                handler_thread.join();
+            }
             break;
         case Cmd::INVALID:
             cout << "invalid commmand" << endl;
@@ -64,9 +73,9 @@ int main(const int argc, const char* argv[]){
         cerr << "usage: ./main ip port" << endl;
         return 1;
     }
-    sock = setup_socket(argv[1], atoi(argv[2]));
-    read_commands();
-
+    int port = atoi(argv[2]);
+    string ip = argv[1];
+    read_commands(ip, port);
     return 0;
 }
 

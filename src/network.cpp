@@ -2,7 +2,7 @@
 #include "../include/utils.h"
 using namespace std;
 
-int setup_socket(const string& ip, const int port){
+int setup_socket(const string& ip, int port){
     const int s = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -21,7 +21,7 @@ int setup_socket(const string& ip, const int port){
     return s;
 }
 
-void handle_connections(const int sock){
+void handle_connections(int sock){
     sockaddr_in addr;
 
 
