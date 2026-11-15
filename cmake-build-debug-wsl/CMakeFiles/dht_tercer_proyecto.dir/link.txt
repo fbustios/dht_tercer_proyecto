@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -Wl,--dependency-file=CMakeFiles/dht_tercer_proyecto.dir/link.d CMakeFiles/dht_tercer_proyecto.dir/src/main.cpp.o CMakeFiles/dht_tercer_proyecto.dir/src/network.cpp.o CMakeFiles/dht_tercer_proyecto.dir/src/utils.cpp.o -o dht_tercer_proyecto
