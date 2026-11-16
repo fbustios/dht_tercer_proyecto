@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(dht_tercer_proyecto src/main.cpp
         src/network.cpp
         src/utils.cpp
+        include/kademliaNode.h
+        src/dht/chordNode.cpp
+        src/dht/kademliaNode.cpp
 )
 
 target_include_directories(dht_tercer_proyecto PRIVATE include)

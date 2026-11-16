@@ -41,8 +41,9 @@ static void read_commands(const string& ip, int port){
             if (tokens.size() == 3 && !joined){
                 joined = true;
                 int sock = setup_socket(ip, port);
-                uint32_t h = 1;
+                uint8_t h = hash_addr(ip + ":" + to_string(port));
                 node = Node(h, sock, ip, port);
+                node.create_fingers();
                 handler_thread = thread(handle_connections, ref(node));
 
             } else cout << "bad usage" << endl;
@@ -52,10 +53,13 @@ static void read_commands(const string& ip, int port){
             if (!joined){}
             break;
         case Cmd::FINGERS:
-            if (!joined){}
+            if (!joined)
+            {
+            }
             break;
         case Cmd::LEAVE:
             if (joined){
+                node.transfer();
                 handler_thread.join();
             }
             break;
@@ -73,9 +77,7 @@ int main(const int argc, const char* argv[]){
         cerr << "usage: ./main ip port" << endl;
         return 1;
     }
-    int port = atoi(argv[2]);
-    string ip = argv[1];
-    read_commands(ip, port);
+    read_commands(argv[1], atoi(argv[2]));
     return 0;
 }
 

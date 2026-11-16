@@ -9,7 +9,7 @@
 class Node {
     public:
         Node();
-        Node(const uint32_t& id, const int& sock, const std::string& ip, const int& port){
+        Node(const uint8_t& id, const int& sock, const std::string& ip, const int& port){
             this->socket = sock;
             this->id = id;
             this->ip = ip;
@@ -17,16 +17,15 @@ class Node {
 
         }
         void create_fingers();
-        void find_successor();
+        void find_successor(uint8_t id);
         void notify();
         void transfer();
     private:
         int socket;
         int port;
         std::string ip;
-        uint32_t id;
-        uint32_t mask = 0xFFFFFFFF;
-        uint32_t predecessor;
+        uint8_t id;
+        uint8_t predecessor;
         std::vector<NodeRef> fingers;
 };
 
