@@ -17,9 +17,10 @@ struct NodeRef{
     std::string ip;
     int port;
 };
-uint8_t hash_addr(std::string value);
 
-std::string serialize_message(Message m);
-Message deserialize_message(std::string value);
+std:: string noderef_to_str(NodeRef &node);
+uint8_t hash_addr(std::string value);
+std::string message_to_str(Message& m);
+Message str_to_message(std::string value);
 
 #endif //DHT_TERCER_PROYECTO_UTILS_H

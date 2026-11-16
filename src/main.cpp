@@ -29,6 +29,7 @@ static vector<string> read_tokens(const string& s){
     return tokens;
 }
 
+
 static void read_commands(const string& ip, int port){
     string command;
     thread handler_thread;
@@ -50,18 +51,28 @@ static void read_commands(const string& ip, int port){
 
             break;
         case Cmd::STATUS:
-            if (!joined){}
+            if (!joined){
+                cout << "not joined yet" << endl;
+                break;
+            }
+            node.print_status();
             break;
         case Cmd::FINGERS:
-            if (!joined)
-            {
+            if (!joined){
+                cout << "not joined yet" << endl;
+                break;
+            }
+            for (auto finger : node.get_fingers()){
+                cout << noderef_to_str(finger) << endl;
             }
             break;
         case Cmd::LEAVE:
-            if (joined){
-                node.transfer();
-                handler_thread.join();
+            if (!joined){
+                cout << "not joined yet" << endl;
+                break;
             }
+            node.transfer();
+            handler_thread.join();
             break;
         case Cmd::INVALID:
             cout << "invalid commmand" << endl;

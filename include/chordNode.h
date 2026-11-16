@@ -20,6 +20,8 @@ class Node {
         void find_successor(uint8_t id);
         void notify();
         void transfer();
+        void print_status();
+        std::vector<NodeRef> get_fingers();
     private:
         int socket;
         int port;

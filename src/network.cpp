@@ -36,8 +36,8 @@ int connect_to(NodeRef& node){
 
 void send_message(NodeRef& ref, Message& message){
     const int s = connect_to(ref);
-    string ser_message = serialize_message(message);
-    if (send(s, ser_message.c_str(), ser_message.size(), 0) < 0){
+    string str_message = message_to_str(message);
+    if (send(s, str_message.c_str(), str_message.size(), 0) < 0){
         perror("send error");
         close(s);
     };
