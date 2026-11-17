@@ -1,9 +1,9 @@
 #ifndef DHT_TERCER_PROYECTO_UTILS_H
 #define DHT_TERCER_PROYECTO_UTILS_H
 #include <string>
-#include <cstdint>
+#include <unordered_map>
 #include <openssl/evp.h>
-#include "network.h"
+
 
 enum class MessageType {JOIN, FIND_SUCC, NOTIFY, PING, PONG, TRANSFER };
 

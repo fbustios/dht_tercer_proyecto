@@ -3,7 +3,7 @@
 #include <thread>
 #include <functional>
 #include "../include/utils.h"
-#include "../include/chordNode.h"
+#include "../include/DHTProtocol.h"
 using namespace std;
 
 
@@ -29,8 +29,13 @@ static vector<string> read_tokens(const string& s){
     return tokens;
 }
 
+static void initialize_node(string ip, int port){
+    int sock = setup_socket(ip, port);
+    uint8_t h = hash_addr(ip + ":" + to_string(port));
+    node = Node(h, sock, ip, port);
+}
 
-static void read_commands(const string& ip, int port){
+static void handle_commands(const string& ip, int port){
     string command;
     thread handler_thread;
     bool joined = false;
@@ -41,11 +46,13 @@ static void read_commands(const string& ip, int port){
         case Cmd::JOIN:
             if (tokens.size() == 3 && !joined){
                 joined = true;
-                int sock = setup_socket(ip, port);
-                uint8_t h = hash_addr(ip + ":" + to_string(port));
-                node = Node(h, sock, ip, port);
-                node.create_fingers();
+                initialize_node(ip, port);
                 handler_thread = thread(handle_connections, ref(node));
+                string& target_ip = tokens[1]; int target_port = stoi(tokens[2]);
+                if (connect_to(target_ip, target_port) == -1) {  //no hubo respuesta, iniciar el anillo
+                    cout << "Target not available, starting new ring..." << endl;
+                } else {  //anillo existente
+                }
 
             } else cout << "bad usage" << endl;
 
@@ -88,7 +95,7 @@ int main(const int argc, const char* argv[]){
         cerr << "usage: ./main ip port" << endl;
         return 1;
     }
-    read_commands(argv[1], atoi(argv[2]));
+    handle_commands(argv[1], atoi(argv[2]));
     return 0;
 }
 

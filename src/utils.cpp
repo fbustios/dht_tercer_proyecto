@@ -7,14 +7,19 @@ uint8_t hash_addr(std::string value){
     return hash[0]; //1 byte
 }
 
-std::string message_to_str(Message& m){
-    std::string serialized_message;
+std::string message_to_str(Message& m){ //a medias falta el messageType
+    std::string result;
     for (const auto& e: m.args){
-        serialized_message+= e.first + ":" + e.second + "\n";
+        result+= e.first + ":" + e.second + "\n";
     }
 
-    return serialized_message;
+    return result;
 }
 Message str_to_message(std::string value){
-
+    return Message{};
 }
+
+std::string noderef_to_str(NodeRef &node)
+{
+    return "d";
+};
