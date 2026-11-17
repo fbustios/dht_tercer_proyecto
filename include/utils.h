@@ -12,7 +12,7 @@ struct Message{
     std::unordered_map<std::string, std::string> args;
 };
 
-struct NodeRef{
+struct NodeRef{ //maybe es necesario un connectionRef, solo en los fingers se usa el id, en los demas solo ip y port
     uint32_t id;
     std::string ip;
     int port;

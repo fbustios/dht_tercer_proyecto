@@ -15,13 +15,13 @@ class Node {
         void transfer();
         void print_status();
         int get_socket();
-        std::vector<NodeRef> get_fingers();
+        std::vector<NodeRef> get_table();
     private:
         int socket;
         int port;
         std::string ip;
         uint8_t id;
-        uint8_t predecessor;
+        NodeRef predecessor;
         std::vector<NodeRef> fingers;
 };
 

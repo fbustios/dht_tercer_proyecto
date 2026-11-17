@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
-#include "../include/network.h"
 #include <thread>
 #include <functional>
+#include "../include/network.h"
 #include "../include/utils.h"
 #include "../include/DHTProtocol.h"
 using namespace std;
@@ -49,10 +49,7 @@ static void handle_commands(const string& ip, int port){
                 initialize_node(ip, port);
                 handler_thread = thread(handle_connections, ref(node));
                 string& target_ip = tokens[1]; int target_port = stoi(tokens[2]);
-                if (connect_to(target_ip, target_port) == -1) {  //no hubo respuesta, iniciar el anillo
-                    cout << "Target not available, starting new ring..." << endl;
-                } else {  //anillo existente
-                }
+                node.join(target_ip, target_port);
 
             } else cout << "bad usage" << endl;
 
@@ -69,8 +66,8 @@ static void handle_commands(const string& ip, int port){
                 cout << "not joined yet" << endl;
                 break;
             }
-            for (auto finger : node.get_fingers()){
-                cout << noderef_to_str(finger) << endl;
+            for (auto entry : node.get_table()){
+                cout << noderef_to_str(entry) << endl;
             }
             break;
         case Cmd::LEAVE:
