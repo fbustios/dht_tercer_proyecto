@@ -5,7 +5,7 @@
 #include <openssl/evp.h>
 
 
-enum class MessageType {JOIN, FIND_SUCC, NOTIFY, PING, PONG, TRANSFER, FOUND_SUCC, GET_PRED, PRED_REPLY};
+enum class MessageType {JOIN, FIND_SUCC, NOTIFY, PING, PONG, TRANSFER };
 
 struct Message{
     MessageType type;
