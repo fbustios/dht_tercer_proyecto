@@ -28,7 +28,7 @@ Message str_to_message(std::string value){
         const std::string content = line.substr(colon + 1);
         if (key == "type") {
             const int type = std::stoi(content);
-            if (type < 0 || type > static_cast<int>(MessageType::SET_SUCCESOR)) {
+            if (type < 0 || type > static_cast<int>(MessageType::SET_PREDECESSOR)) {
                 throw std::runtime_error("Tipo de mensaje desconocido");
             }
             message.type = static_cast<MessageType>(type);

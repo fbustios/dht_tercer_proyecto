@@ -232,15 +232,26 @@ void Node::stabilize() {
 }
 
 void Node::handle_set_succ(const Message& message) {
-    NodeRef origin = read_node(message, "origin");
-    std::cout << "SET_SUCCESSOR received!" << std::endl;
-    std::cout << "New successor: " << noderef_to_str(origin) << std::endl;
+    NodeRef origin = read_node(message, "node");
     {
         std::lock_guard<std::mutex> lock(*state_mutex);
         if(!this->joined) return;
         this->fingers[0] = origin;
         std::cout << "SUCCESSOR NOW: "
           << noderef_to_str(fingers[0]) << std::endl;
+    }
+    std::cout << "SUCCESSOR NOW: "
+          << noderef_to_str(fingers[0]) << std::endl;
+}
+
+void Node::handle_set_pred(const Message& message) {
+    NodeRef origin = read_node(message, "node");
+    {
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        if(!this->joined) return;
+        this->predecessor = origin;
+        std::cout << "PREDECESSOR NOW: "
+          << noderef_to_str(predecessor) << std::endl;
     }
 }
 
@@ -333,8 +344,11 @@ void Node::handle_message(const Message& message) {
             send_message(origin, reply);
             break;
         }
-        case MessageType::SET_SUCCESOR: {
+        case MessageType::SET_SUCCESSOR: {
             handle_set_succ(message);
+        }
+        case MessageType::SET_PREDECESSOR: {
+            handle_set_pred(message);
         }
         default:
             break;
@@ -386,14 +400,14 @@ void Node::leave(){
     if(same_node(pred, self_ref()) && same_node(succ, self_ref())){
         std::cout<<"EL ANILLO TENÍA UN SOLO NODO"<<std::endl;
     } else {
-        Message notification{};
-        notification.type = MessageType::NOTIFY;
-        write_node(notification, "node", pred);
-        send_message(succ, notification);
-        std::cout << "NOTIFY ENVIADO A NODO CON ID:"<< succ.id << " IP: " << succ.ip << " PUERTO: "<< succ.port << std::endl;
+        Message set_pred{};
+        set_pred.type = MessageType::SET_PREDECESSOR;
+        write_node(set_pred, "node", pred);
+        send_message(succ, set_pred);
+        std::cout << "SET_PREDECESSOR ENVIADO A NODO CON ID:"<< succ.id << " IP: " << succ.ip << " PUERTO: "<< succ.port << std::endl;
         Message set_succ{};
-        set_succ.type = MessageType::SET_SUCCESOR;
-        write_node(set_succ, "origin", succ);
+        set_succ.type = MessageType::SET_SUCCESSOR;
+        write_node(set_succ, "node", succ);
         send_message(pred, set_succ);
         std::cout << "SET_SUCCESSOR ENVIADO A NODO CON ID:"<< pred.id << " IP: " << pred.ip << " PUERTO: "<< pred.port << std::endl;
     }

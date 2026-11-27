@@ -51,6 +51,7 @@ class Node {
         void handle_found_successor(const Message& message);
         void handle_pred_reply(const Message& message);
         void handle_set_succ(const Message& message);
+        void handle_set_pred(const Message& message);
         void stop();
 };
 
