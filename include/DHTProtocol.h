@@ -4,6 +4,10 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <algorithm>
+#include <iostream>
+#include <thread>
+#include <chrono>
 #include "utils.h"
 #pragma once
 
@@ -14,7 +18,6 @@ class Node {
         Node(const uint8_t& id, const int& sock, const std::string& ip, const int& port);
         void join(const std::string& ip, int port);
         void find_successor(uint8_t id);
-        void transfer();
         void print_status();
         int get_socket();
         std::vector<NodeRef> get_table();
@@ -23,7 +26,8 @@ class Node {
         void fix_fingers();
         void create_fingers();
         void notify(const NodeRef& node);
-        void stop();
+        void maintenance();
+        void leave();
         bool is_running();
     private:
         int socket;
@@ -46,6 +50,8 @@ class Node {
         void handle_fsuccessor(const Message& message);
         void handle_found_successor(const Message& message);
         void handle_pred_reply(const Message& message);
+        void handle_set_succ(const Message& message);
+        void stop();
 };
 
 #endif //DHT_TERCER_PROYECTO_NODE_H

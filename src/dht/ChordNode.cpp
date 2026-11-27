@@ -1,7 +1,5 @@
 #include "DHTProtocol.h"
 #include "../../include/network.h"
-#include <algorithm>
-#include <iostream>
 #define TABLE_SIZE 8  //identificador entero de 8 bits
 
 namespace {
@@ -98,6 +96,7 @@ void Node::join(const std::string& ip, int port){
         send_message(entry, message);
         std::cout << "JOIN enviado; esperando respuesta" << std::endl;
     }
+    std::cout<<"El ID del nodo es: "<< static_cast<unsigned>(this->id) <<std::endl;
 };
 
 
@@ -232,6 +231,22 @@ void Node::stabilize() {
     send_message(successor, request);
 }
 
+void Node::handle_set_succ(const Message& message) {
+    NodeRef origin = read_node(message, "origin");
+    std::cout << "SET_SUCCESSOR received!" << std::endl;
+    std::cout << "New successor: " << noderef_to_str(origin) << std::endl;
+    {
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        if(!this->joined) return;
+        this->fingers[0] = origin;
+        std::cout << "SUCCESSOR NOW: "
+          << noderef_to_str(fingers[0]) << std::endl;
+    }
+}
+
+
+
+
 void Node::handle_pred_reply(const Message& message) {
     NodeRef old_successor;
     {
@@ -318,17 +333,29 @@ void Node::handle_message(const Message& message) {
             send_message(origin, reply);
             break;
         }
+        case MessageType::SET_SUCCESOR: {
+            handle_set_succ(message);
+        }
         default:
             break;
     }
 }
+
+void Node::maintenance(){
+    while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        if (!running) break;
+        stabilize();
+        //fix_fingers();
+    }
+}
+
 
 std::vector<NodeRef> Node::get_table() {
     std::lock_guard<std::mutex> lock(*state_mutex);
     return fingers;
 }
 
-void Node::transfer(){}
 
 int Node::get_socket(){
     return this->socket;
@@ -345,4 +372,40 @@ void Node::stop() {
         running = false;
     }
 }
+
+void Node::leave(){
+    NodeRef succ;
+    NodeRef pred;
+    {
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        if(!joined) return;
+
+        succ = fingers[0];
+        pred = this->predecessor;
+    }
+    if(same_node(pred, self_ref()) && same_node(succ, self_ref())){
+        std::cout<<"EL ANILLO TENÍA UN SOLO NODO"<<std::endl;
+    } else {
+        Message notification{};
+        notification.type = MessageType::NOTIFY;
+        write_node(notification, "node", pred);
+        send_message(succ, notification);
+        std::cout << "NOTIFY ENVIADO A NODO CON ID:"<< succ.id << " IP: " << succ.ip << " PUERTO: "<< succ.port << std::endl;
+        Message set_succ{};
+        set_succ.type = MessageType::SET_SUCCESOR;
+        write_node(set_succ, "origin", succ);
+        send_message(pred, set_succ);
+        std::cout << "SET_SUCCESSOR ENVIADO A NODO CON ID:"<< pred.id << " IP: " << pred.ip << " PUERTO: "<< pred.port << std::endl;
+    }
+    {   
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        this->running = false;
+        this->joined = false;
+        this->joining = false;
+    }
+    stop();
+    
+}
+
+
 

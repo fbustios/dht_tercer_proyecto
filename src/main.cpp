@@ -56,14 +56,7 @@ static void handle_commands(const string& ip, int port){
                     break;
                 }
                 handler_thread = thread(handle_connections, ref(node));
-                maintenance_thread = thread([] {
-                    while (node.is_running()) {
-                        this_thread::sleep_for(chrono::milliseconds(150));
-                        if (!node.is_running()) break;
-                        node.stabilize();
-                        node.fix_fingers();
-                    }
-                });
+                maintenance_thread = thread(&Node::maintenance, &node);
                 string& target_ip = tokens[1]; int target_port = stoi(tokens[2]);
                 node.join(target_ip, target_port);
 
@@ -99,24 +92,22 @@ static void handle_commands(const string& ip, int port){
                 cout << "not joined yet" << endl;
                 break;
             }
-            node.transfer();
-            node.stop();
+            node.leave();
             if (handler_thread.joinable()) handler_thread.join();
             if (maintenance_thread.joinable()) maintenance_thread.join();
             return;
-            break;
+            
         case Cmd::INVALID:
             cout << "invalid commmand" << endl;
             break;
         }
     }
     if (joined) {
-        node.stop();
+        node.leave();
         if (handler_thread.joinable()) handler_thread.join();
         if (maintenance_thread.joinable()) maintenance_thread.join();
     }
 }
-
 
 
 int main(const int argc, const char* argv[]){
