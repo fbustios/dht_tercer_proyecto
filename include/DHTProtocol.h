@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <condition_variable>
 #include <algorithm>
 #include <iostream>
 #include <thread>
@@ -52,6 +53,16 @@ class Node {
         void handle_pred_reply(const Message& message);
         void handle_set_succ(const Message& message);
         void handle_set_pred(const Message& message);
+        // Solo el hilo de mantenimiento inicia comprobaciones PING.
+        std::shared_ptr<std::condition_variable> ping_cv =
+            std::make_shared<std::condition_variable>();
+        uint64_t ping_sequence = 0;
+        std::string pending_ping;
+        NodeRef pending_peer{};
+        bool pong_received = false;
+        bool probe(NodeRef peer);
+        void recover_neighbors();
+        void invalidate_peer(const NodeRef& peer);
         void stop();
 };
 
