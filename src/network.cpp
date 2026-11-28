@@ -2,6 +2,7 @@
 #include "../include/utils.h"
 #include <poll.h>
 #include <cerrno>
+#include <fcntl.h>
 using namespace std;
 
 int setup_socket(const string& ip, int port){
@@ -33,18 +34,43 @@ int connect_to(const std::string& ip, int port){
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr(ip.c_str());
     addr.sin_port = htons(port);
-    if (connect(s, (sockaddr*)&addr, sizeof(addr)) < 0){
+
+    const int flags = fcntl(s, F_GETFL, 0);
+    if (flags < 0 || fcntl(s, F_SETFL, flags | O_NONBLOCK) < 0) {
+        close(s);
+        return -1;
+    }
+    if (connect(s, (sockaddr*)&addr, sizeof(addr)) < 0) {
+        if (errno != EINPROGRESS) {
+            close(s);
+            return -1;
+        }
+        pollfd pfd{s, POLLOUT, 0};
+        int error = 0;
+        socklen_t len = sizeof(error);
+        if (poll(&pfd, 1, 1000) <= 0 ||
+            getsockopt(s, SOL_SOCKET, SO_ERROR, &error, &len) < 0 || error != 0) {
+            close(s);
+            return -1;
+        }
+    }
+    if (fcntl(s, F_SETFL, flags) < 0) {
+        close(s);
+        return -1;
+    }
+    timeval timeout{1, 0};
+    if (setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
         close(s);
         return -1;
     }
     return s;
 }
 
-void send_message(NodeRef& ref, Message& message){
+bool send_message(NodeRef& ref, Message& message){
     const int s = connect_to(ref.ip, ref.port);
     if (s < 0) {
         cerr << "No se pudo conectar con " << ref.ip << ":" << ref.port << endl;
-        return;
+        return false;
     }
     string str_message = message_to_str(message);
     size_t sent = 0;
@@ -58,6 +84,7 @@ void send_message(NodeRef& ref, Message& message){
         sent += static_cast<size_t>(n);
     }
     close(s);
+    return sent == str_message.size();
 }
 void handle_connections(Node& node){
     while (node.is_running()){

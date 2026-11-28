@@ -166,7 +166,11 @@ void Node::handle_fsuccessor(const Message& message) {
     if (same_node(next, self_ref())) return;
     Message forward = message;
     forward.args["ttl"] = std::to_string(ttl - 1);
-    send_message(next, forward);
+    // Si un dedo obsoleto falla, se intenta el sucesor inmediato.
+    if (!send_message(next, forward) && !same_node(next, successor)) {
+        invalidate_peer(next);
+        send_message(successor, forward);
+    }
 }
 
 void Node::handle_found_successor(const Message& message) {
@@ -250,6 +254,7 @@ void Node::handle_set_pred(const Message& message) {
         std::lock_guard<std::mutex> lock(*state_mutex);
         if(!this->joined) return;
         this->predecessor = origin;
+        this->has_predecessor = true;
         std::cout << "PREDECESSOR NOW: "
           << noderef_to_str(predecessor) << std::endl;
     }
@@ -341,26 +346,134 @@ void Node::handle_message(const Message& message) {
             Message reply{};
             reply.type = MessageType::PONG;
             NodeRef origin = read_node(message, "origin");
+            write_node(reply, "origin", self_ref());
+            if (message.args.count("nonce")) reply.args["nonce"] = message.args.at("nonce");
             send_message(origin, reply);
+            break;
+        }
+        case MessageType::PONG: {
+            if (!message.args.count("nonce")) break;
+            NodeRef origin = read_node(message, "origin");
+            std::lock_guard<std::mutex> lock(*state_mutex);
+            if (message.args.at("nonce") == pending_ping &&
+                same_node(origin, pending_peer)) {
+                pong_received = true;
+                ping_cv->notify_one();
+            }
             break;
         }
         case MessageType::SET_SUCCESSOR: {
             handle_set_succ(message);
+            break;
         }
         case MessageType::SET_PREDECESSOR: {
             handle_set_pred(message);
+            break;
         }
         default:
             break;
     }
 }
 
+bool Node::probe(NodeRef peer) {
+    if (!valid_node(peer)) return false;
+    if (same_node(peer, self_ref())) return true;
+    Message ping{};
+    ping.type = MessageType::PING;
+    write_node(ping, "origin", self_ref());
+    {
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        pending_ping = std::to_string(++ping_sequence);
+        pending_peer = peer;
+        pong_received = false;
+        ping.args["nonce"] = pending_ping;
+    }
+    if (!send_message(peer, ping)) return false;
+    std::unique_lock<std::mutex> lock(*state_mutex);
+    return ping_cv->wait_for(lock, std::chrono::seconds(1),
+                            [this] { return pong_received; });
+}
+
+void Node::invalidate_peer(const NodeRef& peer) {
+    std::lock_guard<std::mutex> lock(*state_mutex);
+    for (size_t i = 1; i < fingers.size(); ++i) {
+        if (same_node(fingers[i], peer)) fingers[i] = NodeRef{};
+    }
+    if (has_predecessor && same_node(predecessor, peer)) {
+        has_predecessor = false;
+        predecessor = NodeRef{};
+    }
+}
+
+void Node::recover_neighbors() {
+    NodeRef successor{}, pred{};
+    std::vector<NodeRef> candidates;
+    bool check_pred;
+    {
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        if (!joined || !running) return;
+        successor = fingers[0];
+        candidates = fingers;
+        check_pred = has_predecessor;
+        if (check_pred) {
+            pred = predecessor;
+            candidates.push_back(pred);
+        }
+    }
+    const NodeRef self = self_ref();
+    if (!probe(successor)) {
+        invalidate_peer(successor);
+        std::cout << "Sucesor caido: " << noderef_to_str(successor) << std::endl;
+        auto distance = [&self](const NodeRef& n) {
+            return (n.id + 256u - self.id) % 256u;
+        };
+        std::sort(candidates.begin(), candidates.end(),
+                  [&](const NodeRef& a, const NodeRef& b) {
+                      return distance(a) < distance(b);
+                  });
+        NodeRef replacement = self;
+        std::vector<NodeRef> checked;
+        for (auto candidate : candidates) {
+            if (!valid_node(candidate) || same_node(candidate, self) ||
+                same_node(candidate, successor)) continue;
+            if (std::any_of(checked.begin(), checked.end(),
+                            [&](const NodeRef& n) { return same_node(n, candidate); })) continue;
+            checked.push_back(candidate);
+            if (probe(candidate)) {
+                replacement = candidate;
+                break;
+            }
+            invalidate_peer(candidate);
+        }
+        {
+            std::lock_guard<std::mutex> lock(*state_mutex);
+            if (joined && same_node(fingers[0], successor)) {
+                fingers[0] = replacement;
+                if (same_node(replacement, self)) {
+                    predecessor = self;
+                    has_predecessor = true;
+                    std::fill(fingers.begin(), fingers.end(), self);
+                }
+                std::cout << "Nuevo sucesor: " << noderef_to_str(replacement) << std::endl;
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(*state_mutex);
+        check_pred = joined && has_predecessor;
+        if (check_pred) pred = predecessor;
+    }
+    if (check_pred && !probe(pred)) invalidate_peer(pred);
+}
+
 void Node::maintenance(){
-    while (running) {
+    while (is_running()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-        if (!running) break;
+        if (!is_running()) break;
+        recover_neighbors();
+        if (!is_running()) break;
         stabilize();
-        //fix_fingers();
+        fix_fingers();
     }
 }
 
